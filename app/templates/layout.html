@@ -30,8 +30,21 @@
     <link rel="stylesheet" href="{{ url_for('static',filename='css/default-css.css') }}">
     <link rel="stylesheet" href="{{ url_for('static',filename='css/styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('static',filename='css/responsive.css') }}">
+    <style>
+        select.form-control:not([size]):not([multiple]) {
+            height: calc(2.25rem + 5px);
+        }
+    </style>
     <!-- modernizr css -->
     <script src="{{ url_for('static',filename='js/vendor/modernizr-2.8.3.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/vendor/jquery-2.2.4.min.js') }}"></script>
+    <script type="text/javascript">
+        $('.nav li').click(function(){
+            $('.nav li').removeClass('active');
+            $(this).addClass('active');
+        })
+    </script>
+
 </head>
 
 <body>
@@ -47,7 +60,6 @@
     </div>
     <!-- offset area end -->
     <!-- jquery latest version -->
-    <script src="{{ url_for('static',filename='js/vendor/jquery-2.2.4.min.js') }}"></script>
     <!-- bootstrap 4 js -->
     <script src="{{ url_for('static',filename='js/popper.min.js') }}"></script>
     <script src="{{ url_for('static',filename='js/bootstrap.min.js') }}"></script>
@@ -97,6 +109,7 @@
 			}
 		});
     </script>
+
 </body>
 
 </html>

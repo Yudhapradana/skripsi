@@ -42,41 +42,29 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {% for row in textpre %}
+                                                {% for row in tfidf %}
                                                     <tr>
                                                         <td>{{ row.1 }}</td>
-                                                        <td>{{ row.2 }}</td>
+                                                        <td>{{ row.3 }}</td>
                                                         <td>
-                                                            <a href="#!" class="btn btn-info btn-xs" data-toggle="modal" data-target="#detailNews{{ row.0 }}"><i class="fa fa-info-circle"></i></a>
+                                                            <a href="#!" class="btn btn-info btn-xs" data-toggle="modal" data-target="#detailTfidf{{ row.0 }}"><i class="fa fa-info-circle"></i></a>
                                                         </td>
                                                     </tr>
-<!--                                                start modal detail-->
-                                                    <div class="modal fade bd-example-modal-lg" id="detailNews{{ row.0 }}">
+                                                <!--                                                start modal detail-->
+                                                    <div class="modal fade bd-example-modal-lg" id="detailTfidf{{ row.0 }}">
                                                         <div class="modal-dialog modal-lg">
                                                             <div class="modal-content">
                                                                 <div class="modal-header">
-                                                                    <h5 class="modal-title">Detail</h5>
+                                                                    <h5 class="modal-title">Detail TFIDF</h5>
                                                                     <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                                                                 </div>
                                                                 <div class="modal-body">
                                                                     <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12 mt-2 mb-2">
-                                                                        <h5>Result Text Preprocessing</h5><br>
-                                                                            <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12 mt-2 mb-2">
-                                                                                <h5>Case Folding</h5><br>
-                                                                                <label>{{ row.3 }}</label>
-                                                                            </div>
-                                                                            <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12 mt-2 mb-2">
-                                                                                <h5>Filtering</h5><br>
-                                                                                <label>{{ row.4 }}</label>
-                                                                            </div>
-                                                                            <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12 mt-2 mb-2">
-                                                                                <h5>Stemming</h5><br>
-                                                                                <label>{{ row.5 }}</label>
-                                                                            </div>
-                                                                            <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12 mt-2 mb-2">
-                                                                                <h5>Tokenizing</h5><br>
-                                                                                <label>{{ row.6 }}</label>
-                                                                            </div>
+                                                                        {% for rw in list %}
+                                                                            {% if row.0 == rw.1 %}
+                                                                                <label>{{ rw.3 }} : {{ rw.2 }}</label><br>
+                                                                            {% endif %}
+                                                                        {% endfor %}
                                                                     </div>
                                                                 </div>
                                                                 <div class="modal-footer">
