@@ -1,6 +1,6 @@
 from app import app
-import os, math, nltk, sys
-from flask import render_template, request, redirect, url_for
+import os, math, datetime
+from flask import render_template, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 from flaskext.mysql import MySQL
 import csv, json, string
@@ -29,7 +29,16 @@ nav.Bar('top', [
 @app.route('/')
 @app.route('/index')
 def index():
-    return render_template('home.html')
+    conn = mysql.connect()
+    cursor = conn.cursor()
+    sql = "SELECT * FROM testing ORDER BY query ASC"
+    cursor.execute(sql)
+    k = cursor.fetchall()
+    sql = "SELECT DISTINCT query, typeir FROM testing ORDER BY query ASC"
+    cursor.execute(sql)
+    query = cursor.fetchall()
+    conn.close()
+    return render_template('home.html', kluster=k, query=query)
 
 @app.route('/news')
 def news():
@@ -330,7 +339,10 @@ def computeIDF(docList):
             if val > 0:
                 idfDict[word] += 1
     for word, val in idfDict.items():
-        idfDict[word] = math.log10(N/float(val))+1
+        if val < 1:
+            idfDict[word] = 0
+        else:
+            idfDict[word] = (float(math.log10(N/float(val))))+1
     return idfDict
 
 def computeTFIDF(tfBow, idfs):
@@ -452,11 +464,10 @@ def getClusterTfidf():
     # # plt.xlabel('Jumlah cluster')
     # # plt.ylabel('WCSS')
     # # plt.show()
-    kmeans = MiniBatchKMeans(n_clusters=int(total), init='k-means++', n_init=10, max_iter=300, tol=0.0001, verbose=0, random_state=None)
+    kmeans = MiniBatchKMeans(n_clusters=int(total), init='k-means++', n_init=10, max_iter=300, tol=0.0001, verbose=0, random_state=123)
     kmeans.fit(array)
     resultcluster = kmeans.labels_
     centroid = kmeans.cluster_centers_
-    print(resultcluster)
     c = []
     for row in resultcluster:
         c.append(("Cluster "+str(row), 0))
@@ -719,6 +730,8 @@ def processTfidfKmeans():
     selecttotal = cursor.fetchall()
     query = str(request.form['query'])
     total = request.form['total']
+    threshold = request.form['threshold']
+    a = datetime.datetime.now().replace(microsecond=0)
     #text preprocessing
     lowercase = query.lower()
     translator = str.maketrans('', '', string.punctuation)
@@ -811,11 +824,12 @@ def processTfidfKmeans():
         cos.append((i, C))
         c.append(C)
         i+=1
+    print(c)
     print(cos)
-    valuemax = max(c)
+    final = []
     for row in cos:
         cluster = "Cluster "+str(row[0])
-        if row[1] == valuemax:
+        if row[1] > float(threshold):
             sql = "SELECT id FROM cluster_kmeans WHERE cluster=%s AND total=%s"
             t = (cluster, total)
             cursor.execute(sql, t)
@@ -826,6 +840,11 @@ def processTfidfKmeans():
                 t = (result)
                 cursor.execute(sql, t)
                 final = cursor.fetchall()
+            else:
+                print("<script>alert('tes');</script>")
+    b = datetime.datetime.now().replace(microsecond=0)
+    c = b - a
+    c = c.seconds
     # recall
     sql = "SELECT * FROM news WHERE isi LIKE '%" + query + "%'"
     cursor.execute(sql)
@@ -838,47 +857,19 @@ def processTfidfKmeans():
             if id == id2:
                 count += 1
     recall = float(count / len(n2))
-    sql = "SELECT * FROM testing WHERE query=%s AND typetest=%s AND typeir=%s"
-    t = (token, "recall", "tfidf")
-    cursor.execute(sql, t)
-    check = cursor.fetchall()
-    if not check:
-        sql = "INSERT INTO testing(query, n1, n2, result, typetest, typeir) VALUES(%s, %s, %s, %s, %s, %s)"
-        t = (token, count, len(n2), recall, "recall", "tfidf")
-        cursor.execute(sql, t)
-    else:
-        sql = "UPDATE testing SET n1=%s, n2=%s, result=%s WHERE query=%s AND typetest=%s AND typeir=%s"
-        t = (count, len(n2), recall, token, "recall", "tfidf")
-        cursor.execute(sql, t)
-    print(recall)
-    # precission
     precission = float(count / len(final))
-    sql = "SELECT * FROM testing WHERE query=%s AND typetest=%s AND typeir=%s"
-    t = (token, "precission", "tfidf")
-    cursor.execute(sql, t)
-    check = cursor.fetchall()
-    if not check:
-        sql = "INSERT INTO testing(query, n1, n2, result, typetest, typeir) VALUES(%s, %s, %s, %s, %s, %s)"
-        t = (token, count, len(final), precission, "precission", "tfidf")
-        cursor.execute(sql, t)
-    else:
-        sql = "UPDATE testing SET n1=%s, n2=%s, result=%s WHERE query=%s AND typetest=%s AND typeir=%s"
-        t = (count, len(final), precission, token, "precission", "tfidf")
-        cursor.execute(sql, t)
-    print(precission)
-    # fscore
     fscore = float(2 * (recall * precission) / (recall + precission))
-    sql = "SELECT * FROM testing WHERE query=%s AND typetest=%s AND typeir=%s"
-    t = (token, "fscore", "tfidf")
+    sql = "SELECT * FROM testing WHERE query=%s AND threshold=%s AND typeir=%s"
+    t = (token, threshold, "tfidf")
     cursor.execute(sql, t)
     check = cursor.fetchall()
     if not check:
-        sql = "INSERT INTO testing(query, n1, n2, result, typetest, typeir) VALUES(%s, %s, %s, %s, %s, %s)"
-        t = (token, recall, precission, fscore, "fscore", "tfidf")
+        sql = "INSERT INTO testing(query, threshold, n1, n2, n3, time, recall, precission, fscore, typeir) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        t = (token, threshold, count, len(n2), len(final), c, recall, precission, fscore, "tfidf")
         cursor.execute(sql, t)
     else:
-        sql = "UPDATE testing SET n1=%s, n2=%s, result=%s WHERE query=%s AND typetest=%s AND typeir=%s"
-        t = (recall, precission, fscore, token, "fscore", "tfidf")
+        sql = "UPDATE testing SET n1=%s, n2=%s, n3=%s, time=%s, recall=%s, precission=%s, fscore=%s, WHERE query=%s AND threshold=%s AND typeir=%s"
+        t = (count, len(n2), len(final), c, recall, precission, fscore, token, threshold, "tfidf")
         cursor.execute(sql, t)
     conn.commit()
     return render_template('irs_tfidf_kmeans.html', total=selecttotal, result=final)
@@ -894,6 +885,7 @@ def processDoc2vecKmeans():
     model = Doc2Vec.load("dv2.model")
     query = str(request.form['query'])
     total = request.form['total']
+    threshold = request.form['threshold']
     # clustering
     N = len(model.docvecs)
     vecdoc = []
@@ -901,7 +893,7 @@ def processDoc2vecKmeans():
         vecdoc.append(model.docvecs[row])
     array = np.array(vecdoc)
     kmeans = MiniBatchKMeans(n_clusters=int(total), init='k-means++', n_init=10, max_iter=300, tol=0.0001, verbose=0,
-                             random_state=None)
+                             random_state=123)
     kmeans.fit(array)
     resultcluster = kmeans.labels_
     centroidcluster = kmeans.cluster_centers_
@@ -919,6 +911,7 @@ def processDoc2vecKmeans():
     idnewscluster = np.array([idnews, c])
     idnewscluster_transpose = idnewscluster.transpose()
     #text preprocessing
+    a = datetime.datetime.now().replace(microsecond=0)
     lowercase = query.lower()
     translator = str.maketrans('', '', string.punctuation)
     delpunctuation = lowercase.replace(".", " ").translate(translator)
@@ -934,6 +927,7 @@ def processDoc2vecKmeans():
     for row in centroidcluster:
         vectorDocCluster.append(row)
     vectorDocCluster.append(vecquery)
+    print(vecquery)
     #computecrossscalar
     resultComputeCrossScalar = []
     for row in centroidcluster:
@@ -945,7 +939,12 @@ def processDoc2vecKmeans():
         array = np.array([val, centroid])
         array_transpose = array.transpose()
         for row2 in array_transpose:
+            if row2[0] < 0:
+                row2[0] = 0
+            if row2[1] < 0:
+                row2[1] = 0
             score = float(float(row2[0])*float(row2[1]))
+            print(score)
             value.append(score)
         resultComputeCrossScalar.append(value)
     #computesumscalar
@@ -989,14 +988,34 @@ def processDoc2vecKmeans():
         cos.append((i, C))
         c.append(C)
         i+=1
-    valuemax = max(c)
+    print(cos)
+    # valuemax = max(c)
+    # for row in cos:
+    #     if row[1] == valuemax:
+    #         choosecluster = "Cluster "+str(row[0])
+    # finalnews = []
+    # for row in idnewscluster_transpose:
+    #     if row[1] == choosecluster:
+    #         finalnews.append(row[0])
+    # final = []
+    # for row in finalnews:
+    #     id = row
+    #     sql = "SELECT * FROM news WHERE id_news=%s"
+    #     t = (id)
+    #     cursor.execute(sql, t)
+    #     result = cursor.fetchall()
+    #     for rows in result:
+    #         final.append((rows[0], rows[1], rows[2], rows[3]))
+    choosecluster = []
     for row in cos:
-        if row[1] == valuemax:
-            choosecluster = "Cluster "+str(row[0])
+        if row[1] > float(threshold):
+            choosecluster.append("Cluster "+str(row[0]))
     finalnews = []
+    print(choosecluster)
     for row in idnewscluster_transpose:
-        if row[1] == choosecluster:
+        if row[1] in choosecluster:
             finalnews.append(row[0])
+    print(finalnews)
     final = []
     for row in finalnews:
         id = row
@@ -1006,58 +1025,35 @@ def processDoc2vecKmeans():
         result = cursor.fetchall()
         for rows in result:
             final.append((rows[0], rows[1], rows[2], rows[3]))
-    # # recall
-    # sql = "SELECT * FROM news WHERE isi LIKE '%" + query + "%'"
-    # cursor.execute(sql)
-    # n2 = cursor.fetchall()
-    # count = 0
-    # for row in final:
-    #     id = row[0]
-    #     for rows in n2:
-    #         id2 = rows[0]
-    #         if id == id2:
-    #             count += 1
-    # recall = float(count / len(n2))
-    # sql = "SELECT * FROM testing WHERE query=%s AND typetest=%s AND typeir=%s"
-    # t = (token, "recall", "doc2vec")
-    # cursor.execute(sql, t)
-    # check = cursor.fetchall()
-    # if not check:
-    #     sql = "INSERT INTO testing(query, n1, n2, result, typetest, typeir) VALUES(%s, %s, %s, %s, %s, %s)"
-    #     t = (token, count, len(n2), recall, "recall", "doc2vec")
-    #     cursor.execute(sql, t)
-    # else:
-    #     sql = "UPDATE testing SET n1=%s, n2=%s, result=%s WHERE query=%s AND typetest=%s AND typeir=%s"
-    #     t = (count, len(n2), recall, token, "recall", "doc2vec")
-    #     cursor.execute(sql, t)
-    # # precission
-    # precission = float(count / len(final))
-    # sql = "SELECT * FROM testing WHERE query=%s AND typetest=%s AND typeir=%s"
-    # t = (token, "precission", "doc2vec")
-    # cursor.execute(sql, t)
-    # check = cursor.fetchall()
-    # if not check:
-    #     sql = "INSERT INTO testing(query, n1, n2, result, typetest, typeir) VALUES(%s, %s, %s, %s, %s, %s)"
-    #     t = (token, count, len(final), precission, "precission", "doc2vec")
-    #     cursor.execute(sql, t)
-    # else:
-    #     sql = "UPDATE testing SET n1=%s, n2=%s, result=%s WHERE query=%s AND typetest=%s AND typeir=%s"
-    #     t = (count, len(final), precission, token, "precission", "doc2vec")
-    #     cursor.execute(sql, t)
-    # # fscore
-    # fscore = float(2 * (recall * precission) / (recall + precission))
-    # sql = "SELECT * FROM testing WHERE query=%s AND typetest=%s AND typeir=%s"
-    # t = (token, "fscore", "doc2vec")
-    # cursor.execute(sql, t)
-    # check = cursor.fetchall()
-    # if not check:
-    #     sql = "INSERT INTO testing(query, n1, n2, result, typetest, typeir) VALUES(%s, %s, %s, %s, %s, %s)"
-    #     t = (token, recall, precission, fscore, "fscore", "doc2vec")
-    #     cursor.execute(sql, t)
-    # else:
-    #     sql = "UPDATE testing SET n1=%s, n2=%s, result=%s WHERE query=%s AND typetest=%s AND typeir=%s"
-    #     t = (recall, precission, fscore, token, "fscore", "doc2vec")
-    #     cursor.execute(sql, t)
+    b = datetime.datetime.now().replace(microsecond=0)
+    c = b - a
+    c = c.seconds
+    # recall
+    sql = "SELECT * FROM news WHERE isi LIKE '%" + query + "%'"
+    cursor.execute(sql)
+    n2 = cursor.fetchall()
+    count = 0
+    for row in final:
+        id = row[0]
+        for rows in n2:
+            id2 = rows[0]
+            if id == id2:
+                count += 1
+    recall = float(count / len(n2))
+    precission = float(count / len(final))
+    fscore = float(2 * (recall * precission) / (recall + precission))
+    sql = "SELECT * FROM testing WHERE query=%s AND threshold=%s AND typeir=%s"
+    t = (token, threshold, "doc2vec")
+    cursor.execute(sql, t)
+    check = cursor.fetchall()
+    if not check:
+        sql = "INSERT INTO testing(query, threshold, n1, n2, n3, time, recall, precission, fscore, typeir) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        t = (token, threshold, count, len(n2), len(final), c, recall, precission, fscore, "doc2vec")
+        cursor.execute(sql, t)
+    else:
+        sql = "UPDATE testing SET n1=%s, n2=%s, n3=%s, time=%s, recall=%s, precission=%s, fscore=%s, WHERE query=%s AND threshold=%s AND typeir=%s"
+        t = (count, len(n2), len(final), c, recall, precission, fscore, token, threshold, "doc2vec")
+        cursor.execute(sql, t)
     conn.commit()
     return render_template('irs_doc2vec_kmeans.html', data=final)
 
@@ -1070,7 +1066,9 @@ def processNoCluster():
     conn = mysql.connect()
     cursor = conn.cursor()
     query = str(request.form['query'])
+    threshold = str(request.form['threshold'])
     # text preprocessing
+    a = datetime.datetime.now().replace(microsecond=0)
     lowercase = query.lower()
     translator = str.maketrans('', '', string.punctuation)
     delpunctuation = lowercase.replace(".", " ").translate(translator)
@@ -1148,18 +1146,23 @@ def processNoCluster():
     joinidnewsc = np.array([idnews, c])
     joinidnewsc_transpose = joinidnewsc.transpose()
     final = []
+    print(joinidnewsc_transpose)
     for row in joinidnewsc_transpose:
         id = row[0]
         valuecosine = row[1]
-        if valuecosine > float(0.0):
+        if valuecosine > float(threshold):
+            print(valuecosine)
             sql = "SELECT * FROM news WHERE id_news=%s"
             t = (id)
             cursor.execute(sql, t)
             result = cursor.fetchall()
             for row in result:
                 final.append((row[0], row[1], row[2], row[3]))
+    b = datetime.datetime.now().replace(microsecond=0)
+    c = b-a
+    c = c.seconds
     #recall
-    sql = "SELECT * FROM news WHERE isi LIKE '%"+query+"%'"
+    sql = "SELECT * FROM news WHERE isi LIKE '%" + query + "%'"
     cursor.execute(sql)
     n2 = cursor.fetchall()
     count = 0
@@ -1167,48 +1170,22 @@ def processNoCluster():
         id = row[0]
         for rows in n2:
             id2 = rows[0]
-            if id==id2:
-                count+=1
-    recall = float(count/len(n2))
-    sql = "SELECT * FROM testing WHERE query=%s AND typetest=%s AND typeir=%s"
-    t = (token, "recall", "nocluster")
+            if id == id2:
+                count += 1
+    recall = float(count / len(n2))
+    precission = float(count / len(final))
+    fscore = float(2 * (recall * precission) / (recall + precission))
+    sql = "SELECT * FROM testing WHERE query=%s AND threshold=%s AND typeir=%s"
+    t = (token, threshold, "nocluster")
     cursor.execute(sql, t)
     check = cursor.fetchall()
     if not check:
-        sql = "INSERT INTO testing(query, n1, n2, result, typetest, typeir) VALUES(%s, %s, %s, %s, %s, %s)"
-        t = (token, count, len(n2), recall, "recall", "nocluster")
+        sql = "INSERT INTO testing(query, threshold, n1, n2, n3, time, recall, precission, fscore, typeir) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        t = (token, threshold, count, len(n2), len(final), c, recall, precission, fscore, "nocluster")
         cursor.execute(sql, t)
     else:
-        sql = "UPDATE testing SET n1=%s, n2=%s, result=%s WHERE query=%s AND typetest=%s AND typeir=%s"
-        t = (count, len(n2), recall, token,"recall", "nocluster")
-        cursor.execute(sql, t)
-    #precission
-    precission = float(count/len(final))
-    sql = "SELECT * FROM testing WHERE query=%s AND typetest=%s AND typeir=%s"
-    t = (token, "precission", "nocluster")
-    cursor.execute(sql, t)
-    check = cursor.fetchall()
-    if not check:
-        sql = "INSERT INTO testing(query, n1, n2, result, typetest, typeir) VALUES(%s, %s, %s, %s, %s, %s)"
-        t = (token, count, len(final), precission, "precission", "nocluster")
-        cursor.execute(sql, t)
-    else:
-        sql = "UPDATE testing SET n1=%s, n2=%s, result=%s WHERE query=%s AND typetest=%s AND typeir=%s"
-        t = (count, len(final), precission, token, "precission", "nocluster")
-        cursor.execute(sql, t)
-    #fscore
-    fscore = float(2*(recall*precission)/(recall+precission))
-    sql = "SELECT * FROM testing WHERE query=%s AND typetest=%s AND typeir=%s"
-    t = (token, "fscore", "nocluster")
-    cursor.execute(sql, t)
-    check = cursor.fetchall()
-    if not check:
-        sql = "INSERT INTO testing(query, n1, n2, result, typetest, typeir) VALUES(%s, %s, %s, %s, %s, %s)"
-        t = (token, recall, precission, fscore, "fscore", "nocluster")
-        cursor.execute(sql, t)
-    else:
-        sql = "UPDATE testing SET n1=%s, n2=%s, result=%s WHERE query=%s AND typetest=%s AND typeir=%s"
-        t = (recall, precission, fscore, token, "fscore", "nocluster")
+        sql = "UPDATE testing SET n1=%s, n2=%s, n3=%s, time=%s, recall=%s, precission=%s, fscore=%s, WHERE query=%s AND threshold=%s AND typeir=%s"
+        t = (count, len(n2), len(final), c, recall, precission, fscore, token, threshold, "nocluster")
         cursor.execute(sql, t)
     conn.commit()
     return render_template('irs_nocluster.html', result=final)
@@ -1258,29 +1235,29 @@ def longvector(tfidf):
         result.append(akar)
     return result
 
-@app.route('/recall')
-def recall():
+@app.route('/test_tfidf')
+def test_tfidf():
     conn = mysql.connect()
     cursor = conn.cursor()
-    sql = "SELECT * FROM testing WHERE typetest='recall' ORDER BY query ASC"
+    sql = "SELECT * FROM testing WHERE typeir='tfidf' ORDER BY query ASC"
     cursor.execute(sql)
     result = cursor.fetchall()
-    return render_template('recall.html', result=result)
+    return render_template('test_tfidf.html', result=result)
 
-@app.route('/precission')
-def precission():
+@app.route('/test_doc2vec')
+def test_doc2vec():
     conn = mysql.connect()
     cursor = conn.cursor()
-    sql = "SELECT * FROM testing WHERE typetest='precission' ORDER BY query ASC"
+    sql = "SELECT * FROM testing WHERE typeir='doc2vec' ORDER BY query ASC"
     cursor.execute(sql)
     result = cursor.fetchall()
-    return render_template('precission.html', result=result)
+    return render_template('test_doc2vec.html', result=result)
 
-@app.route('/fscore')
-def fscore():
+@app.route('/test_nocluster')
+def test_nocluster():
     conn = mysql.connect()
     cursor = conn.cursor()
-    sql = "SELECT * FROM testing WHERE typetest='fscore' ORDER BY query ASC"
+    sql = "SELECT * FROM testing WHERE typeir='nocluster' ORDER BY query ASC"
     cursor.execute(sql)
     result = cursor.fetchall()
-    return render_template('fscore.html', result=result)
+    return render_template('test_nocluster.html', result=result)

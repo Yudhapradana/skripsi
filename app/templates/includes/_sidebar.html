@@ -10,7 +10,7 @@
                 <div class="menu-inner">
                     <nav>
                         <ul class="metismenu" id="menu">
-                            <li>
+                            <li class="{{ 'active' if active_page == 'dashboard' else '' }}">
                                 <a href="{{ url_for('index') }}" aria-expanded="true"><i class="ti-dashboard"></i><span>dashboard</span></a>
 <!--                                <ul class="collapse">-->
 <!--                                    <li><a href="index.html">ICO dashboard</a></li>-->
@@ -18,7 +18,7 @@
 <!--                                    <li class="active"><a href="index3.html">SEO dashboard</a></li>-->
 <!--                                </ul>-->
                             </li>
-                            <li>
+                            <li class="{{ 'active' if active_page == 'news' else '' }}">
                                 <a href="{{ url_for('news') }}" aria-expanded="true"><i class="ti-layout-sidebar-left"></i><span>News
                                     </span></a>
 <!--                                <ul class="collapse">-->
@@ -26,7 +26,7 @@
 <!--                                    <li><a href="index3-horizontalmenu.html">Horizontal Sidebar</a></li>-->
 <!--                                </ul>-->
                             </li>
-                            <li>
+                            <li class="{{ 'active' if active_page == 'textpreprocessing' else '' }}">
                                 <a href="{{ url_for('textpre') }}" aria-expanded="true"><i class="ti-pie-chart"></i><span>Text Preprocessing</span></a>
 <!--                                <ul class="collapse">-->
 <!--                                    <li><a href="barchart.html">bar chart</a></li>-->
@@ -34,37 +34,37 @@
 <!--                                    <li><a href="piechart.html">pie chart</a></li>-->
 <!--                                </ul>-->
                             </li>
-                            <li>
+                            <li class="{{ 'active' if active_page == 'doc2vec' or active_page == 'tfidf' else '' }}">
                                 <a href="javascript:void(0)" aria-expanded="true"><i class="ti-palette"></i><span>Word Weighting</span></a>
                                 <ul class="collapse">
-                                    <li><a href="{{ url_for('tfidf') }}">TF IDF</a></li>
-                                    <li><a href="{{ url_for('doc2vec') }}">DOC2VEC</a></li>
+                                    <li class="{{ 'active' if active_page == 'tfidf' else '' }}"><a href="{{ url_for('tfidf') }}">TF IDF</a></li>
+                                    <li class="{{ 'active' if active_page == 'doc2vec' else '' }}"><a href="{{ url_for('doc2vec') }}">DOC2VEC</a></li>
                                 </ul>
                             </li>
-                            <li>
+                            <li class="{{ 'active' if active_page == 'kmeans' or active_page == 'clusternews' else '' }}">
                                 <a href="javascript:void(0)" aria-expanded="true"><i class="ti-slice"></i><span>Kmeans</span></a>
                                 <ul class="collapse">
-                                    <li><a href="{{ url_for('getKmeansTfidf') }}">Cluster (TF IDF)</a></li>
+                                    <li class="{{ 'active' if active_page == 'kmeans' else '' }}"><a href="{{ url_for('getKmeansTfidf') }}">Cluster (TF IDF)</a></li>
 <!--                                    <li><a href="{{ url_for('getKmeansDoc2vec') }}">Cluster (DOC2VEC)</a></li>-->
-                                    <li><a href="{{ url_for('getClusterNews') }}">Clustering News</a></li>
+                                    <li class="{{ 'active' if active_page == 'clusternews' else '' }}"><a href="{{ url_for('getClusterNews') }}">Clustering News</a></li>
                                 </ul>
                             </li>
-                            <li>
+                            <li class="{{ 'active' if active_page == 'irs_tfidf_kmeans' or active_page == 'irs_doc2vec_kmeans' or active_page == 'irs_nocluster' else '' }}">
                                 <a href="javascript:void(0)" aria-expanded="true"><i class="fa fa-table"></i>
                                     <span>Information Retrival</span></a>
                                 <ul class="collapse">
-                                    <li><a href="{{ url_for('ir_tfidf_kmeans') }}">TFIDF Kmeans</a></li>
-                                    <li><a href="{{ url_for('irs_doc2vec_kmeans') }}">Doc2Vec Kmeans</a></li>
-                                    <li><a href="{{ url_for('ir_nocluster') }}">Un-Clustering</a></li>
+                                    <li class="{{ 'active' if active_page == 'irs_tfidf_kmeans' else '' }}"><a href="{{ url_for('ir_tfidf_kmeans') }}">TFIDF Kmeans</a></li>
+                                    <li class="{{ 'active' if active_page == 'irs_doc2vec_kmeans' else '' }}"><a href="{{ url_for('irs_doc2vec_kmeans') }}">Doc2Vec Kmeans</a></li>
+                                    <li class="{{ 'active' if active_page == 'irs_nocluster' else '' }}"><a href="{{ url_for('ir_nocluster') }}">Un-Clustering</a></li>
                                 </ul>
                             </li>
-                            <li>
+                            <li class="{{ 'active' if active_page == 'test_tfidf' or active_page == 'test_doc2vec' or active_page == 'test_nocluster' else '' }}">
                                 <a href="javascript:void(0)" aria-expanded="true"><i class="fa fa-table"></i>
                                     <span>Testing</span></a>
                                 <ul class="collapse">
-                                    <li><a href="{{ url_for('recall') }}">Recall</a></li>
-                                    <li><a href="{{ url_for('precission') }}">Precission</a></li>
-                                    <li><a href="{{ url_for('fscore') }}">F-Score</a></li>
+                                    <li class="{{ 'active' if active_page == 'test_tfidf' else '' }}"><a href="{{ url_for('test_tfidf') }}">TFIDF Kmeans</a></li>
+                                    <li class="{{ 'active' if active_page == 'test_doc2vec' else '' }}"><a href="{{ url_for('test_doc2vec') }}">Doc2Vec Kmeans</a></li>
+                                    <li class="{{ 'active' if active_page == 'test_nocluster' else '' }}"><a href="{{ url_for('test_nocluster') }}">Un-Clustering</a></li>
                                 </ul>
                             </li>
 <!--                            <li><a href="maps.html"><i class="ti-map-alt"></i> <span>maps</span></a></li>-->

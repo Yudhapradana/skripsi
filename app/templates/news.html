@@ -1,5 +1,5 @@
 {% extends 'layout.html' %}
-
+{% set active_page = "news" %}
 {% block title %} Home {% endblock %}
 
 {% block body %}
@@ -9,10 +9,10 @@
                 <div class="row align-items-center">
                     <div class="col-sm-6">
                         <div class="breadcrumbs-area clearfix">
-                            <h4 class="page-title pull-left">Dashboard</h4>
+                            <h4 class="page-title pull-left">News</h4>
                             <ul class="breadcrumbs pull-left">
-                                <li><a href="index.html">Home</a></li>
-                                <li><span>Dashboard</span></li>
+                                <li><a href="{{ url_for('index') }}">Home</a></li>
+                                <li><span>News</span></li>
                             </ul>
                         </div>
                     </div>
@@ -126,10 +126,7 @@
                                                             </div>
                                                         </div>
                                                     </div>
-                                                {% else %}
-                                                    <tr>
-                                                        <td colspan="2">Unbelieveable. No Data</td>
-                                                    </tr>
+
                                                 {% endfor %}
                                             </tbody>
                                         </table>
