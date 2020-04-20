@@ -7,6 +7,7 @@ import csv, json, string
 from xml.dom import minidom
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 import numpy as np
+import  matplotlib.pyplot as plt
 from sklearn.cluster import KMeans, MiniBatchKMeans
 from flask import jsonify
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
@@ -155,10 +156,10 @@ def stemming(listToStr):
 def textpre():
     conn = mysql.connect()
     cursor = conn.cursor()
+    sql = "SELECT * FROM news"
+    cursor.execute(sql)
+    result = cursor.fetchall()
     if not tp:
-        sql = "SELECT * FROM news"
-        cursor.execute(sql)
-        result = cursor.fetchall()
         for row in result:
             # casefolding
             # mengubah text menjadi lowercase
@@ -193,7 +194,7 @@ def textpre():
                     t = (row, id_news)
                     cursor.execute(sql, t)
         else:
-            sql = "DELETE FROM word"
+            sql = "TRUNCATE word"
             cursor.execute(sql)
             for row in tp:
                 id_news = row[0]
@@ -227,52 +228,71 @@ def getNews():
 def tfidf():
     conn = mysql.connect()
     cursor = conn.cursor()
-    sql = "SELECT * FROM word"
-    cursor.execute(sql)
-    result = cursor.fetchall()
-    word = []
-    wordset = []
-    wd= []
-    idf = []
-    finaltfidf = []
-    for row in result:
-        word.append(row[1])
-    for row in word:
-        if row not in wordset:
-            wordset.append(row)
+    sql6 = "SELECT t.id_word, t.id_news, t.tf_idf, w.word FROM `tf_idf`as t inner join word as w on t.id_word=w.id_word"
+    cursor.execute(sql6)
+    result6 = cursor.fetchall()
     sql = "SELECT * FROM news"
     cursor.execute(sql)
     news = cursor.fetchall()
-    listberita = []
-    for row in news:
-        listword = []
-        id_news = row[0]
-        sql = "SELECT * FROM word WHERE id_news=%s"
-        t = (id_news)
-        cursor.execute(sql, t)
-        word = cursor.fetchall()
-        for row in word:
-            w = str(row[1])
-            listword.append(w)
-        listberita.append((id_news, listword))
-    for row in listberita:
-        id_news = row[0]
-        isi = row[1]
-        worddict = dict.fromkeys(wordset, 0)
-        for word in isi:
-            if word in worddict:
-                worddict[word] += 1
-        wd.append((id_news, worddict))
-        idf.append(worddict)
-    idfword = computeIDF(idf)
-    for row in wd:
-        wordtfidf = computeTFIDF(row[1], idfword)
-        finaltfidf.append((row[0], wordtfidf))
-    sqltf = "SELECT * FROM tf_idf"
-    cursor.execute(sqltf)
-    result2 = cursor.fetchall()
-    if not result2:
+    if not result6:
+        sql = "SELECT * FROM word"
+        cursor.execute(sql)
+        result = cursor.fetchall()
+        word = []
+        wordset = []
+        wd= []
+        idf = []
+        finaltfidf = []
         for row in result:
+            word.append(row[1])
+        for row in word:
+            if row not in wordset:
+                wordset.append(row)
+        listberita = []
+        for row in news:
+            listword = []
+            id_news = row[0]
+            sql = "SELECT * FROM word WHERE id_news=%s"
+            t = (id_news)
+            cursor.execute(sql, t)
+            word = cursor.fetchall()
+            for row in word:
+                w = str(row[1])
+                listword.append(w)
+            listberita.append((id_news, listword))
+        for row in listberita:
+            id_news = row[0]
+            isi = row[1]
+            worddict = dict.fromkeys(wordset, 0)
+            for word in isi:
+                if word in worddict:
+                    worddict[word] += 1
+            wd.append((id_news, worddict))
+            idf.append(worddict)
+        idfword = computeIDF(idf)
+        for row in wd:
+            wordtfidf = computeTFIDF(row[1], idfword)
+            finaltfidf.append((row[0], wordtfidf))
+        sqltf = "SELECT * FROM tf_idf"
+        cursor.execute(sqltf)
+        result2 = cursor.fetchall()
+        if not result2:
+            for row in result:
+                    idword = row[0]
+                    valueword = row[1]
+                    idnews = row[2]
+                    sql = "SELECT word.word, word.id_news FROM tf_idf inner join word on tf_idf.id_word=word.id_word WHERE word.id_news=%s AND word.word=%s"
+                    t = (idnews, valueword)
+                    cursor.execute(sql, t)
+                    valueword2 = cursor.fetchall()
+                    if not valueword2:
+                        sql2 = "INSERT INTO tf_idf (id_word, id_news) VALUES(%s, %s)"
+                        t2 = (idword, idnews)
+                        cursor.execute(sql2, t2)
+        else:
+            deletetfidf = "TRUNCATE tf_idf"
+            cursor.execute(deletetfidf)
+            for row in result:
                 idword = row[0]
                 valueword = row[1]
                 idnews = row[2]
@@ -284,45 +304,27 @@ def tfidf():
                     sql2 = "INSERT INTO tf_idf (id_word, id_news) VALUES(%s, %s)"
                     t2 = (idword, idnews)
                     cursor.execute(sql2, t2)
-    else:
-        deletetfidf = "DELETE FROM tf_idf"
-        cursor.execute(deletetfidf)
-        for row in result:
-            idword = row[0]
-            valueword = row[1]
-            idnews = row[2]
-            sql = "SELECT word.word, word.id_news FROM tf_idf inner join word on tf_idf.id_word=word.id_word WHERE word.id_news=%s AND word.word=%s"
-            t = (idnews, valueword)
-            cursor.execute(sql, t)
-            valueword2 = cursor.fetchall()
-            if not valueword2:
-                sql2 = "INSERT INTO tf_idf (id_word, id_news) VALUES(%s, %s)"
-                t2 = (idword, idnews)
-                cursor.execute(sql2, t2)
-    for row in finaltfidf:
-        idnews = row[0]
-        tf_idf = row[1]
-        for word, val in tf_idf.items():
-            sql3 = "SELECT id_word FROM word WHERE word=%s AND id_news=%s"
-            t3 = (word, idnews)
-            cursor.execute(sql3, t3)
-            id_word = cursor.fetchall()
-            if len(id_word) > 0:
-                id_word = str(id_word)
-                id_word = id_word.rsplit('((', 1)[1]
-                id_word = id_word.split(',)')
-                sql4 = "UPDATE tf_idf SET tf_idf=%s WHERE id_news=%s AND id_word=%s"
-                t4 = (val, idnews, id_word[0])
-                cursor.execute(sql4, t4)
-    sql5 = "SELECT * FROM news"
-    cursor.execute(sql5)
-    result5 = cursor.fetchall()
-    sql6 = "SELECT t.id_word, t.id_news, t.tf_idf, w.word FROM `tf_idf`as t inner join word as w on t.id_word=w.id_word"
-    cursor.execute(sql6)
-    result6 = cursor.fetchall()
+        for row in finaltfidf:
+            idnews = row[0]
+            tf_idf = row[1]
+            for word, val in tf_idf.items():
+                sql3 = "SELECT id_word FROM word WHERE word=%s AND id_news=%s"
+                t3 = (word, idnews)
+                cursor.execute(sql3, t3)
+                id_word = cursor.fetchall()
+                if len(id_word) > 0:
+                    id_word = str(id_word)
+                    id_word = id_word.rsplit('((', 1)[1]
+                    id_word = id_word.split(',)')
+                    sql4 = "UPDATE tf_idf SET tf_idf=%s WHERE id_news=%s AND id_word=%s"
+                    t4 = (val, idnews, id_word[0])
+                    cursor.execute(sql4, t4)
+        sql6 = "SELECT t.id_word, t.id_news, t.tf_idf, w.word FROM `tf_idf`as t inner join word as w on t.id_word=w.id_word"
+        cursor.execute(sql6)
+        result6 = cursor.fetchall()
     conn.commit()
     cursor.close()
-    return render_template('tfidf.html', tfidf=result5, list=result6)
+    return render_template('tfidf.html', tfidf=news, list=result6)
 
 def computeTF(wordDict, bow):
     tfDict = {}
@@ -400,10 +402,71 @@ def doc2vec():
 def getKmeansTfidf():
     conn = mysql.connect()
     cursor = conn.cursor()
-    sql = "SELECT * FROM cluster_kmeans ORDER BY id ASC"
+    sql = "SELECT * FROM cluster_kmeans WHERE type='tfidf' ORDER BY id ASC"
     cursor.execute(sql)
     kmeans = cursor.fetchall()
     return render_template('kmeans.html', kmeans=kmeans)
+
+@app.route('/checkCluster')
+def checkcluster():
+    conn = mysql.connect()
+    cursor = conn.cursor()
+    sql = "SELECT * FROM word"
+    cursor.execute(sql)
+    result = cursor.fetchall()
+    word = []
+    wordset = []
+    for row in result:
+        word.append(row[1])
+    for row in word:
+        if row not in wordset:
+            wordset.append(row)
+    sql = "SELECT * FROM news"
+    cursor.execute(sql)
+    news = cursor.fetchall()
+    wd = []
+    id_news = []
+    for row in news:
+        id = row[0]
+        worddict = dict.fromkeys(wordset, 0)
+        wd.append((id, worddict))
+        if id not in id_news:
+            id_news.append(id)
+    valuewd = []
+    for row in wd:
+        idnews = row[0]
+        isi = row[1]
+        worddict2 = dict.fromkeys(wordset, 0)
+        for word, val in isi.items():
+            sql = "SELECT tf_idf FROM tf_idf INNER JOIN word on tf_idf.id_word=word.id_word WHERE tf_idf.id_news=%s AND word.word=%s"
+            t = (idnews, word)
+            cursor.execute(sql, t)
+            valuetfidf = cursor.fetchone()
+            valuetfidf = str(valuetfidf).replace("(", "").replace(")", "").replace(",", "")
+            if valuetfidf == "None":
+                worddict2[word] = float(0)
+            else:
+                worddict2[word] = float(valuetfidf)
+        valuewd.append(worddict2)
+    matrix = []
+    for row in valuewd:
+        value = []
+        for word, val in row.items():
+            value.append(val)
+        matrix.append(value)
+    array = np.array(matrix)
+    wcss = []
+    for i in range(1, 4):
+        kmeans = KMeans(n_clusters=i, init='k-means++', random_state=123)
+        kmeans.fit(array)
+        wcss.append(kmeans.inertia_)
+    plt.plot(range(1, 4), wcss)
+    plt.title('Metode Elbow')
+    plt.xlabel('Jumlah cluster')
+    plt.ylabel('WCSS')
+    plt.show()
+    conn.close()
+    return redirect(url_for('getKmeansTfidf'))
 
 @app.route('/getClusterTfidf', methods=["POST"])
 def getClusterTfidf():
@@ -475,21 +538,24 @@ def getClusterTfidf():
     for row in c:
         if row not in c2:
             c2.append(row)
+    type = "tfidf"
+    print(c2)
     for row in c2:
         cluster = row[0]
-        datakmeans = "SELECT cluster, total FROM cluster_kmeans WHERE cluster=%s AND total=%s"
-        t = (cluster, total)
+        datakmeans = "SELECT cluster, total FROM cluster_kmeans WHERE cluster=%s AND total=%s AND type=%s"
+        t = (cluster, total, type)
         cursor.execute(datakmeans, t)
         result = cursor.fetchall()
+        print(result)
         if not result:
-            sql = "INSERT INTO cluster_kmeans(cluster ,total) VALUES(%s, %s)"
-            t = (cluster, total)
+            sql = "INSERT INTO cluster_kmeans(cluster ,total, type) VALUES(%s, %s, %s)"
+            t = (cluster, total, type)
             cursor.execute(sql, t)
     idkmeans=[]
     for row in c:
         clus = row[0]
-        sql = "SELECT id FROM cluster_kmeans WHERE cluster=%s AND total=%s"
-        t = (clus, total)
+        sql = "SELECT id FROM cluster_kmeans WHERE cluster=%s AND total=%s AND type=%s"
+        t = (clus, total, type)
         cursor.execute(sql, t)
         id = cursor.fetchone()
         id = str(id).replace("(", "").replace(")", "").replace(",", "")
@@ -500,8 +566,8 @@ def getClusterTfidf():
         text = str(row).replace("['", "").replace("' '", " ").replace("']", "").split(" ")
         id = text[0]
         idc = text[1]
-        dataresultkmeans = "SELECT total FROM result_kmeans INNER JOIN cluster_kmeans on result_kmeans.id_cluster=cluster_kmeans.id WHERE result_kmeans.id_news=%s AND total=%s"
-        t = (id, total)
+        dataresultkmeans = "SELECT total FROM result_kmeans INNER JOIN cluster_kmeans on result_kmeans.id_cluster=cluster_kmeans.id WHERE result_kmeans.id_news=%s AND total=%s AND type=%s"
+        t = (id, total, type)
         cursor.execute(dataresultkmeans, t)
         result = cursor.fetchall()
         totalset = []
@@ -513,8 +579,8 @@ def getClusterTfidf():
             sql = "INSERT INTO result_kmeans(id_cluster, id_news) VALUES(%s, %s)"
             t = (idc, id)
             cursor.execute(sql, t)
-    sql = "SELECT word.id_news, id_word, result_kmeans.id_cluster, cluster_kmeans.cluster FROM `word` INNER JOIN result_kmeans on word.id_news=result_kmeans.id_news INNER JOIN cluster_kmeans on cluster_kmeans.id=result_kmeans.id_cluster WHERE cluster_kmeans.total=%s"
-    t = (total)
+    sql = "SELECT word.id_news, id_word, result_kmeans.id_cluster, cluster_kmeans.cluster FROM `word` INNER JOIN result_kmeans on word.id_news=result_kmeans.id_news INNER JOIN cluster_kmeans on cluster_kmeans.id=result_kmeans.id_cluster WHERE cluster_kmeans.total=%s AND type=%s"
+    t = (total, type)
     cursor.execute(sql, t)
     result = cursor.fetchall()
     clustot = []
@@ -523,14 +589,14 @@ def getClusterTfidf():
         idcluster = row[2]
         idnews = row[0]
         if not clustot:
-            sql = "SELECT DISTINCT cluster_kmeans.total FROM `word` INNER JOIN result_kmeans on word.id_news=result_kmeans.id_news INNER JOIN cluster_kmeans on cluster_kmeans.id=result_kmeans.id_cluster WHERE cluster_kmeans.total=%s"
-            t = (total)
+            sql = "SELECT DISTINCT cluster_kmeans.total FROM `word` INNER JOIN result_kmeans on word.id_news=result_kmeans.id_news INNER JOIN cluster_kmeans on cluster_kmeans.id=result_kmeans.id_cluster WHERE cluster_kmeans.total=%s AND type=%s"
+            t = (total, type)
             cursor.execute(sql, t)
             result2 = cursor.fetchall()
             clustot.append(result2)
         if clustot:
-            sql = "SELECT centroid_kmeans.id_cluster, centroid_kmeans.id_word, total FROM `centroid_kmeans` INNER JOIN cluster_kmeans on centroid_kmeans.id_cluster=cluster_kmeans.id WHERE centroid_kmeans.id_cluster=%s AND centroid_kmeans.id_word=%s AND cluster_kmeans.total=%s"
-            t = (idcluster, idword, total)
+            sql = "SELECT centroid_kmeans.id_cluster, centroid_kmeans.id_word, total FROM `centroid_kmeans` INNER JOIN cluster_kmeans on centroid_kmeans.id_cluster=cluster_kmeans.id WHERE centroid_kmeans.id_cluster=%s AND centroid_kmeans.id_word=%s AND cluster_kmeans.total=%s AND type=%s"
+            t = (idcluster, idword, total, type)
             cursor.execute(sql, t)
             result3 = cursor.fetchall()
             if not result3:
@@ -558,8 +624,8 @@ def getClusterTfidf():
         i+=1
     for row in savecentroid:
         clus = "Cluster "+str(row[0])
-        sql = "SELECT id FROM cluster_kmeans WHERE cluster=%s AND total=%s"
-        t = (clus, total)
+        sql = "SELECT id FROM cluster_kmeans WHERE cluster=%s AND total=%s AND type=%s"
+        t = (clus, total, type)
         cursor.execute(sql, t)
         result = cursor.fetchone()
         idc = str(result).replace("(", "").replace(")", "").replace(",", "").replace("'", "")
@@ -595,41 +661,45 @@ def getClusterDoc2vec():
     conn = mysql.connect()
     cursor = conn.cursor()
     total = request.form['total']
+    model = Doc2Vec.load("dv2.model")
     sql = "SELECT * FROM news"
     cursor.execute(sql)
     news = cursor.fetchall()
-    listberita = []
+    # listberita = []
     idnews = []
     for row in news:
-        listword = []
+        # listword = []
         id_news = row[0]
-        sql = "SELECT * FROM word WHERE id_news=%s"
-        t = (id_news)
-        cursor.execute(sql, t)
-        word = cursor.fetchall()
-        for row in word:
-            w = str(row[1])
-            listword.append(w)
-        listberita.append((id_news, listword))
+        # sql = "SELECT * FROM word WHERE id_news=%s"
+        # t = (id_news)
+        # cursor.execute(sql, t)
+        # word = cursor.fetchall()
+        # for row in word:
+        #     w = str(row[1])
+        #     listword.append(w)
+        # listberita.append((id_news, listword))
         idnews.append(id_news)
-    data = []
-    for row in listberita:
-        sentence = ""
-        word = row[1]
-        for row in word:
-            sentence += row + " "
-        data.append(str(sentence))
-    tagged_data = [TaggedDocument(words=_d.split(), tags=[str(i)]) for i, _d in enumerate(data)]
-    model = Doc2Vec(tagged_data)
-    model.save("dv2.model")
+    # data = []
+    # for row in listberita:
+    #     sentence = ""
+    #     word = row[1]
+    #     for row in word:
+    #         sentence += row + " "
+    #     data.append(str(sentence))
+    # tagged_data = [TaggedDocument(words=_d.split(), tags=[str(i)]) for i, _d in enumerate(data)]
+    # model = Doc2Vec(tagged_data)
+    # model.save("dv2.model")
     # print(len(model.infer_vector(["4g", "lte"])))
     N = len(model.docvecs)
     vecdoc = []
     for row in range(N):
         vecdoc.append(model.docvecs[row])
     array = np.array(vecdoc)
-    kmeans = MiniBatchKMeans(n_clusters=int(total), init='k-means++', n_init=10, max_iter=300, tol=0.0001, verbose=0, random_state=None).fit(array)
+    kmeans = MiniBatchKMeans(n_clusters=int(total), init='k-means++', n_init=10, max_iter=300, tol=0.0001, verbose=0,
+                             random_state=123)
+    kmeans.fit(array)
     resultcluster = kmeans.labels_
+    centroidcluster = kmeans.cluster_centers_
     c = []
     for row in resultcluster:
         c.append(("Cluster " + str(row), 0))
@@ -676,6 +746,25 @@ def getClusterDoc2vec():
             sql = "INSERT INTO result_kmeans(id_cluster, id_news) VALUES(%s, %s)"
             t = (idc, id)
             cursor.execute(sql, t)
+    sql = "SELECT DISTINCT id_cluster FROM centroid_doc2vec INNER JOIN cluster_kmeans on centroid_doc2vec.id_cluster=cluster_kmeans.id WHERE cluster_kmeans.total=%s AND type=%s"
+    t = (total, type)
+    cursor.execute(sql, t)
+    check = cursor.fetchall()
+    i = 0
+    if not check:
+        for row in centroidcluster:
+            cluster = "Cluster "+str(i)
+            sql = "SELECT id FROM cluster_kmeans WHERE cluster=%s AND total=%s AND type=%s"
+            t = (cluster, total, type)
+            cursor.execute(sql, t)
+            idc = cursor.fetchone()
+            idc = str(idc).replace("(", "").replace(")", "").replace(",", "")
+            value = row
+            for val in value:
+                sql = "INSERT INTO centroid_doc2vec(id_cluster, centroid) VALUES(%s,%s)"
+                t = (idc, float(val))
+                cursor.execute(sql, t)
+            i+=1
     conn.commit()
     conn.close()
     return redirect(url_for('getKmeansDoc2vec'))
@@ -699,8 +788,9 @@ def searchClusterNews():
     cursor = conn.cursor()
     cluster = request.form['cluster']
     total = request.form['total']
-    sql = "SELECT k.total, k.cluster, n.judul FROM `result_kmeans` INNER JOIN cluster_kmeans as k on k.id=result_kmeans.id_cluster INNER JOIN news as n on n.id_news=result_kmeans.id_news WHERE k.cluster=%s AND k.total=%s ORDER BY k.cluster ASC"
-    t = (cluster, total)
+    type = request.form['type']
+    sql = "SELECT k.total, k.cluster, n.judul FROM `result_kmeans` INNER JOIN cluster_kmeans as k on k.id=result_kmeans.id_cluster INNER JOIN news as n on n.id_news=result_kmeans.id_news WHERE k.cluster=%s AND k.total=%s AND k.type=%s ORDER BY k.cluster ASC"
+    t = (cluster, total, type)
     cursor.execute(sql, t)
     result = cursor.fetchall()
     sql = "SELECT DISTINCT cluster FROM cluster_kmeans"
@@ -716,7 +806,7 @@ def searchClusterNews():
 def ir_tfidf_kmeans():
     conn = mysql.connect()
     cursor = conn.cursor()
-    sql = "SELECT DISTINCT total FROM cluster_kmeans"
+    sql = "SELECT DISTINCT total FROM cluster_kmeans WHERE type='tfidf'"
     cursor.execute(sql)
     selecttotal = cursor.fetchall()
     return render_template('irs_tfidf_kmeans.html', total=selecttotal)
@@ -876,7 +966,13 @@ def processTfidfKmeans():
 
 @app.route('/irs_doc2vec_kmeans')
 def irs_doc2vec_kmeans():
-    return render_template('irs_doc2vec_kmeans.html')
+    conn = mysql.connect()
+    cursor = conn.cursor()
+    sql = "SELECT DISTINCT total FROM cluster_kmeans WHERE type='doc2vec'"
+    cursor.execute(sql)
+    selecttotal = cursor.fetchall()
+    conn.close()
+    return render_template('irs_doc2vec_kmeans.html', total=selecttotal)
 
 @app.route('/processDoc2vecKmeans', methods=['GET','POST'])
 def processDoc2vecKmeans():
@@ -886,30 +982,51 @@ def processDoc2vecKmeans():
     query = str(request.form['query'])
     total = request.form['total']
     threshold = request.form['threshold']
-    # clustering
-    N = len(model.docvecs)
-    vecdoc = []
-    for row in range(N):
-        vecdoc.append(model.docvecs[row])
-    array = np.array(vecdoc)
-    kmeans = MiniBatchKMeans(n_clusters=int(total), init='k-means++', n_init=10, max_iter=300, tol=0.0001, verbose=0,
-                             random_state=123)
-    kmeans.fit(array)
-    resultcluster = kmeans.labels_
-    centroidcluster = kmeans.cluster_centers_
-    print(resultcluster)
-    c = []
-    for row in resultcluster:
-        c.append("Cluster " + str(row))
-    sql = "SELECT * FROM news"
+    sql = "SELECT DISTINCT total FROM cluster_kmeans WHERE type='doc2vec'"
     cursor.execute(sql)
-    news = cursor.fetchall()
-    idnews = []
-    for row in news:
-        id = row[0]
-        idnews.append(id)
-    idnewscluster = np.array([idnews, c])
-    idnewscluster_transpose = idnewscluster.transpose()
+    selecttotal = cursor.fetchall()
+    # clustering
+    sql = "SELECT id_news, cluster FROM result_kmeans INNER JOIN cluster_kmeans on result_kmeans.id_cluster=cluster_kmeans.id WHERE cluster_kmeans.total=%s AND cluster_kmeans.type=%s ORDER BY id_news ASC"
+    t = (total, "doc2vec")
+    cursor.execute(sql, t)
+    idnewscluster_transpose = cursor.fetchall()
+    sql = "SELECT id, cluster FROM cluster_kmeans WHERE total=%s AND type=%s ORDER BY cluster ASC"
+    cursor.execute(sql, t)
+    centroid_doc2vec = cursor.fetchall()
+    centroidcluster = []
+    for row in centroid_doc2vec:
+        listcentroid = []
+        sql = "SELECT centroid FROM centroid_doc2vec WHERE id_cluster=%s"
+        t = (row[0])
+        cursor.execute(sql, t)
+        result = cursor.fetchall()
+        for row in result:
+            val = str(row).replace("(", "").replace(",", "").replace(")", "")
+            listcentroid.append(float(val))
+        centroidcluster.append(listcentroid)
+    # N = len(model.docvecs)
+    # vecdoc = []
+    # for row in range(N):
+    #     vecdoc.append(model.docvecs[row])
+    # array = np.array(vecdoc)
+    # kmeans = MiniBatchKMeans(n_clusters=int(total), init='k-means++', n_init=10, max_iter=300, tol=0.0001, verbose=0,
+    #                          random_state=123)
+    # kmeans.fit(array)
+    # resultcluster = kmeans.labels_
+    # centroidcluster = kmeans.cluster_centers_
+    # c = []
+    # for row in resultcluster:
+    #     c.append("Cluster " + str(row))
+    # sql = "SELECT * FROM news"
+    # cursor.execute(sql)
+    # news = cursor.fetchall()
+    # idnews = []
+    # for row in news:
+    #     id = row[0]
+    #     idnews.append(id)
+    # idnewscluster = np.array([idnews, c])
+    # idnewscluster_transpose = idnewscluster.transpose()
+    # print(idnewscluster_transpose)
     #text preprocessing
     a = datetime.datetime.now().replace(microsecond=0)
     lowercase = query.lower()
@@ -922,12 +1039,12 @@ def processDoc2vecKmeans():
     st = stemming(listToStr)
     token = st.split()
     # get vector
-    vecquery = model.infer_vector(token)
+    vecquery = model.infer_vector(token, steps=20)
+    print(vecquery)
     vectorDocCluster = []
     for row in centroidcluster:
         vectorDocCluster.append(row)
     vectorDocCluster.append(vecquery)
-    print(vecquery)
     #computecrossscalar
     resultComputeCrossScalar = []
     for row in centroidcluster:
@@ -944,7 +1061,6 @@ def processDoc2vecKmeans():
             if row2[1] < 0:
                 row2[1] = 0
             score = float(float(row2[0])*float(row2[1]))
-            print(score)
             value.append(score)
         resultComputeCrossScalar.append(value)
     #computesumscalar
@@ -988,7 +1104,6 @@ def processDoc2vecKmeans():
         cos.append((i, C))
         c.append(C)
         i+=1
-    print(cos)
     # valuemax = max(c)
     # for row in cos:
     #     if row[1] == valuemax:
@@ -1007,15 +1122,14 @@ def processDoc2vecKmeans():
     #     for rows in result:
     #         final.append((rows[0], rows[1], rows[2], rows[3]))
     choosecluster = []
+    print(cos)
     for row in cos:
         if row[1] > float(threshold):
             choosecluster.append("Cluster "+str(row[0]))
     finalnews = []
-    print(choosecluster)
     for row in idnewscluster_transpose:
         if row[1] in choosecluster:
             finalnews.append(row[0])
-    print(finalnews)
     final = []
     for row in finalnews:
         id = row
@@ -1055,7 +1169,7 @@ def processDoc2vecKmeans():
         t = (count, len(n2), len(final), c, recall, precission, fscore, token, threshold, "doc2vec")
         cursor.execute(sql, t)
     conn.commit()
-    return render_template('irs_doc2vec_kmeans.html', data=final)
+    return render_template('irs_doc2vec_kmeans.html', data=final, total=selecttotal)
 
 @app.route('/ir_nocluster')
 def ir_nocluster():

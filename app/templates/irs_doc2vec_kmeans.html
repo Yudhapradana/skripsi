@@ -36,7 +36,12 @@
                                                 <input type="text" name="query" id="query" placeholder="Search..." required>
                                             </div>
                                             <div class="col-auto my-1">
-                                                <input class="form-control" type="text" id="total" name="total" placeholder="Jumlah Cluster" required>
+                                                <select class="form-control" name="total" id="total" required>
+                                                    <option hidden>Total Cluster</option>
+                                                    {% for row in total %}
+                                                        <option value="{{ row.0 }}">{{ row.0 }}</option>
+                                                    {% endfor %}
+                                                </select>
                                             </div>
                                             <div class="col-auto my-1">
                                                 <select class="form-control" name="threshold" id="threshold" required>

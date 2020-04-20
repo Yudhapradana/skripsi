@@ -41,11 +41,11 @@
                                     <li class="{{ 'active' if active_page == 'doc2vec' else '' }}"><a href="{{ url_for('doc2vec') }}">DOC2VEC</a></li>
                                 </ul>
                             </li>
-                            <li class="{{ 'active' if active_page == 'kmeans' or active_page == 'clusternews' else '' }}">
+                            <li class="{{ 'active' if active_page == 'kmeans' or active_page == 'clusternews' or active_page == 'kmeans2' else '' }}">
                                 <a href="javascript:void(0)" aria-expanded="true"><i class="ti-slice"></i><span>Kmeans</span></a>
                                 <ul class="collapse">
                                     <li class="{{ 'active' if active_page == 'kmeans' else '' }}"><a href="{{ url_for('getKmeansTfidf') }}">Cluster (TF IDF)</a></li>
-<!--                                    <li><a href="{{ url_for('getKmeansDoc2vec') }}">Cluster (DOC2VEC)</a></li>-->
+                                    <li class="{{ 'active' if active_page == 'kmeans2' else '' }}"><a href="{{ url_for('getKmeansDoc2vec') }}">Cluster (DOC2VEC)</a></li>
                                     <li class="{{ 'active' if active_page == 'clusternews' else '' }}"><a href="{{ url_for('getClusterNews') }}">Clustering News</a></li>
                                 </ul>
                             </li>

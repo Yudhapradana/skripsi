@@ -49,6 +49,14 @@
                                                 {% endfor %}
                                             </select>
                                         </div>
+                                        <div class="col-sm-3 my-1">
+                                            <label class="sr-only" for="total">Total Cluster</label>
+                                            <select class="form-control" name="type" id="type">
+                                                <option hidden>Select Type</option>
+                                                <option value="tfidf">TF IDF</option>
+                                                <option value="doc2vec">Doc2Vec</option>
+                                            </select>
+                                        </div>
 <!--                                        <div class="col-sm-3 my-1">-->
 <!--                                            <label class="sr-only" for="total">Type Word Weighting</label>-->
 <!--                                            <select class="form-control" name="type" id="type">-->
