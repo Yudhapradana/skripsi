@@ -7,13 +7,13 @@ import csv, json, string
 from xml.dom import minidom
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 import numpy as np
-import  matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans, MiniBatchKMeans
 from flask import jsonify
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
-from flask_navigation import Navigation
+# from flask_navigation import Navigation
 
-nav = Navigation(app)
+# nav = Navigation(app)
 mysql = MySQL()
 app.config['MYSQL_DATABASE_USER'] = 'root'
 app.config['MYSQL_DATABASE_PASSWORD'] = ''
@@ -22,10 +22,10 @@ app.config['MYSQL_DATABASE_HOST'] = 'localhost'
 mysql.init_app(app)
 symbols = "!\"#$%&()*+-./:;<=>?@[\]^_`{|}~\n"
 tp = []
-nav.Bar('top', [
-    nav.Item('Home', 'index'),
-    nav.Item('News', 'news'),
-])
+# nav.Bar('top', [
+#     nav.Item('Home', 'index'),
+#     nav.Item('News', 'news'),
+# ])
 
 @app.route('/')
 @app.route('/index')
@@ -223,6 +223,38 @@ def getNews():
     data = {}
     data["data"] = res
     return jsonify(data)
+
+@app.route('/gettfidf')
+def gettfidf():
+    conn = mysql.connect()
+    cursor = conn.cursor()
+    sql = "SELECT * FROM news"
+    cursor.execute(sql)
+    news = cursor.fetchall()
+    listberita = []
+    idnews = []
+    title = []
+    for row in news:
+        listword = []
+        id_news = row[0]
+        judul = row[1]
+        sql = "SELECT * FROM word WHERE id_news=%s"
+        t = (id_news)
+        cursor.execute(sql, t)
+        word = cursor.fetchall()
+        for row in word:
+            w = str(row[1])
+            listword.append(w)
+        listberita.append((id_news, listword))
+        idnews.append(id_news)
+        title.append(judul)
+    data = []
+    for row in listberita:
+        sentence = ""
+        word = row[1]
+        for row in word:
+            sentence += row + " "
+        data.append(str(sentence))
 
 @app.route('/tfidf')
 def tfidf():
@@ -456,7 +488,7 @@ def checkcluster():
         matrix.append(value)
     array = np.array(matrix)
     wcss = []
-    for i in range(1, 4):
+    for i in range(1, 400):
         kmeans = KMeans(n_clusters=i, init='k-means++', random_state=123)
         kmeans.fit(array)
         wcss.append(kmeans.inertia_)
@@ -465,8 +497,6 @@ def checkcluster():
     plt.xlabel('Jumlah cluster')
     plt.ylabel('WCSS')
     plt.show()
-    conn.close()
-    return redirect(url_for('getKmeansTfidf'))
 
 @app.route('/getClusterTfidf', methods=["POST"])
 def getClusterTfidf():

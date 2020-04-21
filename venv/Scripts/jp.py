@@ -1,4 +1,4 @@
-#!C:\Users\yudha\PycharmProjects\Skripsiku\venv\Scripts\python.exe
+#!C:\Users\yudha\PycharmProjects\iniskripsi\venv\Scripts\python.exe
 
 import sys
 import json

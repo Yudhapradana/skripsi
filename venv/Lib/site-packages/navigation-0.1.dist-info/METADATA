@@ -1,0 +1,26 @@
+Metadata-Version: 2.1
+Name: navigation
+Version: 0.1
+Summary: Python library for learning a website and retrieving information from it
+Home-page: https://github.com/idin/navigation
+Author: Idin
+Author-email: py@idin.ca
+License: MIT
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: ~=3.6
+Description-Content-Type: text/markdown
+Requires-Dist: requests
+Requires-Dist: bs4
+Requires-Dist: selenium
+Requires-Dist: chronology
+Requires-Dist: fake-useragent
+
+# Poodle
+
+

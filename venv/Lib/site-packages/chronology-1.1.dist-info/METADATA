@@ -1,0 +1,14 @@
+Metadata-Version: 2.1
+Name: chronology
+Version: 1.1
+Summary: Chronology is a Python library for dealing with time (and date).
+Home-page: https://github.com/idin/chronology
+Author: Idin
+Author-email: py@idin.ca
+License: MIT
+Platform: UNKNOWN
+Requires-Python: ~=3.6
+
+UNKNOWN
+
+

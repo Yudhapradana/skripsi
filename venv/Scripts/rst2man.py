@@ -1,4 +1,4 @@
-#!C:\Users\yudha\PycharmProjects\Skripsiku\venv\Scripts\python.exe
+#!C:\Users\yudha\PycharmProjects\iniskripsi\venv\Scripts\python.exe
 
 # Author: 
 # Contact: grubert@users.sf.net
